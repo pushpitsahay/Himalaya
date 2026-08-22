@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HIMALAYA</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+    <div class="bg" aria-hidden="true"></div>
+
+    <header class="site-header">
+        <div class="header-left">
+            <span id="clock" class="clock">--:--:--</span>
+            <span id="date" class="date">—</span>
+        </div>
+
+        <div class="header-center">
+            <span class="pulse-dot" aria-hidden="true"></span>
+            <span><strong id="online-count">1</strong> Online</span>
+        </div>
+
+        <div class="header-right">
+            <a href="https://open.spotify.com/playlist/4IzjPmSdgQVTefQDbfSLXN" target="_blank" rel="noopener noreferrer" title="Open H I M A L A Y A playlist">
+                <img src="images/Spotify.png" alt="Spotify" class="spotify-icon" />
+            </a>
+        </div>
+    </header>
+
+    <main class="content">
+        <section class="hero">
+            <h1 class="title">HIMALAYA</h1>
+            <p class="quote">&ldquo;The way you believe in God, I believe in Mountains.&rdquo;</p>
+        </section>
+
+        <section class="todo-card" aria-label="To-do list">
+            <div class="todo-head">
+                <h2>To-Do</h2>
+                <span class="todo-count"><span id="done-count">0</span> / <span id="total-count">0</span></span>
+                <button id="add-task" class="add-task-btn" type="button" title="Add task" aria-label="Add task">
+                    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                        <path fill="currentColor" d="M11 5h2v14h-2zM5 11h14v2H5z" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="todo-progress"><span id="todo-bar"></span></div>
+
+            <div class="todo-body">
+                <ul id="task-list" class="task-list"></ul>
+                <p id="empty-state" class="empty-state">Nothing here yet &mdash; tap + to start.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="player" aria-label="Music player">
+        <div class="pill">
+            <img id="cover" class="cover" alt="" />
+
+            <div class="pill-meta">
+                <div class="pill-title" id="track-title">Loading…</div>
+                <div class="pill-artist" id="track-artist">Spotify</div>
+                <input id="seek" class="seek" type="range" value="0" min="0" max="100" step="0.1"
+                    aria-label="Seek" />
+                <div class="pill-time"><span id="current-time">0:00</span> / <span id="duration">0:00</span></div>
+            </div>
+
+            <div class="pill-controls">
+                <button id="prev" class="ctrl" type="button" title="Previous" aria-label="Previous">
+                    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                        <path fill="currentColor" d="M7 6h2v12H7zm3 6l9-6v12z" />
+                    </svg>
+                </button>
+
+                <button id="play" class="ctrl play" type="button" title="Play" aria-label="Play">
+                    <svg id="play-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                        <path fill="currentColor" d="M8 5v14l11-7z" />
+                    </svg>
+                </button>
+
+                <button id="next" class="ctrl" type="button" title="Next" aria-label="Next">
+                    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                        <path fill="currentColor" d="M15 6h2v12h-2zM5 6l9 6-9 6z" />
+                    </svg>
+                </button>
+            </div>
+
+            <div id="spotify-embed" class="spotify-embed" aria-hidden="true">
+                <div id="spotify-embed-target"></div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+    <script src="https://open.spotify.com/embed/iframe-api/v1"></script>
+</body>
+
+</html>
