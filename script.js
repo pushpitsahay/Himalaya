@@ -1,4 +1,4 @@
-/* ---------------- Clock ---------------- */
+/* Clock */
 const clockEl = document.getElementById("clock");
 const dateEl = document.getElementById("date");
 
@@ -15,9 +15,7 @@ function tickClock() {
 tickClock();
 setInterval(tickClock, 1000);
 
-/* ---------------- Live "online" presence ----------------
-   Real presence tracking without a backend: every open tab writes a
-   heartbeat to localStorage; entries older than STALE_MS are dropped. */
+/* Live "online" presence */
 const PRESENCE_KEY = "himalaya.presence";
 const HEARTBEAT_MS = 2000;
 const STALE_MS = 6000;
@@ -62,7 +60,7 @@ window.addEventListener("beforeunload", () => {
     localStorage.setItem(PRESENCE_KEY, JSON.stringify(presence));
 });
 
-/* ---------------- To-Do list ---------------- */
+/* To-Do list */
 const TASKS_KEY = "himalaya.tasks";
 const listEl = document.getElementById("task-list");
 const emptyEl = document.getElementById("empty-state");
@@ -201,6 +199,132 @@ let isLoadingTrack = false;
 let autoplayTimer = 0;
 let lastPlaybackUri = "";
 let lastAutoAdvanceAt = 0;
+// YouTube fallback
+let youtubePlayer = null;
+let youtubeReady = false;
+let youtubeFallbackActive = false;
+let youtubeFallbackStarting = false;
+
+// Initialize YouTube fallback player
+window.onYouTubeIframeAPIReady = () => {
+    youtubePlayer = new YT.Player("youtube-player", {
+        width: "1",
+        height: "1",
+        videoId: "",
+        playerVars: {
+            autoplay: 0,
+            controls: 0,
+            playsinline: 1,
+            rel: 0,
+            enablejsapi: 1
+        },
+        events: {
+            onReady: () => {
+                youtubeReady = true;
+            },
+
+            onStateChange: (event) => {
+                if (!youtubeFallbackActive) return;
+
+                if (event.data === YT.PlayerState.PLAYING) {
+                    setPlaying(true);
+                }
+
+                if (event.data === YT.PlayerState.PAUSED) {
+                    setPlaying(false);
+                }
+
+                if (event.data === YT.PlayerState.ENDED) {
+                    youtubeFallbackActive = false;
+                    youtubeFallbackStarting = false;
+
+                    // Keep original auto-next behavior
+                    loadTrack(currentIndex + 1, true);
+                }
+            }
+        }
+    });
+};
+
+// Start YouTube when Spotify only provides a preview
+async function startYouTubeFallback(track) {
+    if (!youtubeReady || !youtubePlayer) {
+        youtubeFallbackStarting = false;
+        return;
+    }
+
+    try {
+        const params = new URLSearchParams({
+            title: track.title || "",
+            artist: track.artist || ""
+        });
+
+        const response = await fetch(
+            `/api/youtube?${params.toString()}`,
+            { cache: "no-store" }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.videoId) {
+            throw new Error(
+                data?.error || "No YouTube video found."
+            );
+        }
+        youtubeFallbackActive = true;
+        youtubeFallbackStarting = false;
+        console.log(
+            "YouTube fallback:",
+            track.title,
+            "→",
+            data.videoId
+        );
+        youtubePlayer.loadVideoById(data.videoId);
+        youtubePlayer.playVideo();
+    } catch (error) {
+        console.error("YouTube fallback error:", error);
+        youtubeFallbackActive = false;
+        youtubeFallbackStarting = false;
+    }
+}
+
+// Update the UI from YouTube playback
+function updateYouTubeUI() {
+    if (
+        !youtubeFallbackActive ||
+        !youtubePlayer ||
+        !youtubeReady
+    ) {
+        return;
+    }
+
+    try {
+        const position =
+            Number(
+                youtubePlayer.getCurrentTime?.() || 0
+            );
+        const duration =
+            Number(
+                youtubePlayer.getDuration?.() || 0
+            );
+        if (duration <= 0) {
+            return;
+        }
+        seek.max = duration;
+        seek.value = Math.min(
+            position,
+            duration
+        );
+        currentTimeEl.textContent =
+            formatTime(position);
+
+        durationEl.textContent =
+            formatTime(duration);
+    } catch {
+        // Ignore while YouTube initializes.
+    }
+}
+setInterval(updateYouTubeUI, 250);
 
 window.onSpotifyIframeApiReady = (api) => {
     spotifyApi = api;
@@ -255,23 +379,58 @@ function createOrLoadSpotify(uri, autoplay) {
                 ctrl.addListener("ready", () => {
                     if (pending) return;
                     if (autoplay) {
-                        // This is called after the user has clicked Play/Next,
-                        // so it is allowed by browser autoplay policies.
                         ctrl.play();
                     }
                 });
 
                 ctrl.addListener("playback_started", (event) => {
+                    // Ignore Spotify after YouTube takes over
+                    if ( youtubeFallbackActive || youtubeFallbackStarting ) {
+                        return;
+                    }
                     lastPlaybackUri = event?.data?.playingURI || lastPlaybackUri;
                     setPlaying(true);
                 });
 
                 ctrl.addListener("playback_update", (event) => {
+                    // YouTube is taking over playback.
+                    if ( youtubeFallbackActive || youtubeFallbackStarting ) {
+                        return;
+                    }
                     const data = event.data || {};
                     const position = Number(data.position || 0);
                     const duration = Number(data.duration || 0);
                     const isPaused = Boolean(data.isPaused);
                     const playingURI = data.playingURI || lastPlaybackUri;
+                    // Detect Spotify preview
+                    const currentTrack = tracks[currentIndex];
+                    if (
+                        currentTrack &&
+                        duration > 0 &&
+                        !isPaused &&
+                        !youtubeFallbackActive &&
+                        !youtubeFallbackStarting
+                    ) {
+                        const expectedDuration = Number(currentTrack.duration || 0);
+                        const difference = Math.abs(duration - expectedDuration);
+                        const isPreview = expectedDuration > 60000 && duration < 60000 && difference > 60000;
+                        if (isPreview) { 
+                            console.warn( 
+                                "Spotify preview detected:", 
+                                currentTrack.title
+                            );
+                            youtubeFallbackStarting = true;
+                            // Stop Spotify
+                            try {
+                                controller.pause();
+                            } catch {
+                            // Ignore
+                            }
+                            // Start YouTube
+                            startYouTubeFallback(currentTrack);
+                            return;
+                        }
+                    }
 
                     if (playingURI) lastPlaybackUri = playingURI;
 
@@ -280,9 +439,6 @@ function createOrLoadSpotify(uri, autoplay) {
                     currentTimeEl.textContent = formatTime(position / 1000);
                     durationEl.textContent = formatTime(duration / 1000);
                     setPlaying(!isPaused);
-
-                    // Some browsers/embeds do not reliably emit an "ended"
-                    // event. Detect the final 0.5 seconds and advance once.
                     if (
                         duration > 0 &&
                         position >= duration - 500 &&
@@ -358,6 +514,18 @@ async function buildPlaylist() {
 playBtn.addEventListener("click", () => {
     if (!tracks.length) return;
 
+    if (youtubeFallbackActive && youtubePlayer) {
+        const state = youtubePlayer.getPlayerState();
+
+        if (state === YT.PlayerState.PLAYING) {
+            youtubePlayer.pauseVideo();
+        } else {
+            youtubePlayer.playVideo();
+        }
+
+        return;
+    }
+
     if (!controller) {
         loadTrack(currentIndex === -1 ? 0 : currentIndex, true);
         return;
@@ -375,7 +543,23 @@ nextBtn.addEventListener("click", () => {
 });
 
 seek.addEventListener("input", () => {
-    if (controller) controller.seek(Number(seek.value));
+    // Seek YouTube when fallback is active.
+    if (
+        youtubeFallbackActive &&
+        youtubePlayer
+    ) {
+        youtubePlayer.seekTo(
+            Number(seek.value),
+            true
+        );
+        return;
+    }
+    // Otherwise seek Spotify.
+    if (controller) {
+        controller.seek(
+            Number(seek.value)
+        );
+    }
 });
 
 buildPlaylist();
