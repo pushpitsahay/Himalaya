@@ -305,14 +305,17 @@ function createOrLoadSpotify(uri, autoplay) {
 
     isLoadingTrack = true;
     setPlaying(false);
+    
+    // Load the selected Spotify track into the existing Embed.
     controller.loadEntity(uri);
-
-    // loadEntity changes the content of the existing Embed. Give it a moment
-    // to initialize, then explicitly start playback for Next/Previous/Play.
+    
+    // Wait for the new track to initialize, then play it.
     autoplayTimer = window.setTimeout(() => {
-        if (autoplay && controller) controller.play();
+        if (autoplay && controller) {
+            controller.play();
+        }
         isLoadingTrack = false;
-    }, 650);
+    }, 1200);
 }
 
 function loadTrack(index, autoplay) {
