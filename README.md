@@ -1,50 +1,43 @@
 # H I M A L A Y A
 
-This version uses the Spotify Web API to read the live contents of the H I M A L A Y A playlist and the Spotify iFrame API to play individual tracks.
+A small music player for the H I M A L A Y A Spotify playlist.
 
-Playlist:
-https://open.spotify.com/playlist/4IzjPmSdgQVTefQDbfSLXN
+This project reads the live playlist data from Spotify's API and lets the browser play tracks using Spotify's player.
 
-## What changed
+## Features
 
-- Removed browser scraping of `open.spotify.com/embed/...`.
-- The server calls Spotify's current `GET /v1/playlists/{id}/items` endpoint.
-- Individual track IDs, titles, artists, artwork, URLs and durations are returned to the page.
-- Next/Previous now load the actual next/previous Spotify track URI.
-- The current track artwork comes directly from Spotify album metadata.
-- Playlist results are cached for only 30 seconds, so Spotify playlist edits are picked up without changing the website code.
-- The Spotify Client Secret and refresh token stay on the server and are never sent to the browser.
+- Reads the latest playlist contents from Spotify
+- Shows track metadata such as title, artist, album art, and duration
+- Supports next/previous track navigation
+- Keeps Spotify credentials on the server, not in the browser
 
-## One-time setup
+## Setup
 
-1. Create an app in the Spotify Developer Dashboard.
-2. Copy the Client ID and Client Secret.
-3. In the Spotify app settings, add this exact Redirect URI:
+1. Create a Spotify app in the Spotify Developer Dashboard.
+2. Copy `.env.example` to `.env` and add your `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`.
+3. Set the redirect URI to:
 
    `http://localhost:3000/spotify/callback`
 
-4. Copy `.env.example` to `.env`.
-5. Put your Client ID and Client Secret in `.env`.
-6. Run:
+4. Install dependencies:
 
    `npm install`
+
+5. Start the app:
+
    `npm start`
 
-7. Open:
+6. Open:
 
    `http://localhost:3000/spotify/login`
 
-8. Sign in with the Spotify account that owns or collaborates on the H I M A L A Y A playlist and approve playlist access.
-9. After the success page appears, open:
+7. Authorize the Spotify account that owns or collaborates on the playlist.
+8. Open:
 
    `http://localhost:3000`
 
-The server stores the refresh token in `.spotify-token.json`, which is ignored by Git.
+## Notes
 
-## Important Spotify requirement
-
-Spotify's current playlist-items endpoint only returns playlist contents for playlists owned by the authenticated user or playlists the authenticated user collaborates on. If the H I M A L A Y A playlist is owned by a different Spotify account, authorize the account that owns it or make that account a collaborator where appropriate.
-
-## Deployment
-
-For a deployed server, change `SPOTIFY_REDIRECT_URI` to the exact HTTPS callback URL configured in the Spotify Developer Dashboard. Prefer setting `SPOTIFY_REFRESH_TOKEN` as a server environment variable rather than committing `.spotify-token.json`.
+- The app uses the playlist ID configured in `.env.example` by default.
+- If the playlist is not owned by the authorized account, the account must be added as a collaborator or the playlist must be reauthorized.
+- For deployment, configure the production callback URL in the Spotify dashboard and set the refresh token as a server environment variable instead of committing it to the repo.
